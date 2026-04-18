@@ -2,7 +2,8 @@ services:
   onnx-smoke:
     build:
       context: .
-      dockerfile: docker/apps/standalone-onnx/Dockerfile
+      dockerfile: docker/Dockerfile
+      target: onnx-smoke
       args:
         ROCM_VERSION: ${ROCM_VERSION}
         ORT_TAG: ${ORT_TAG}
@@ -25,7 +26,8 @@ services:
   frigate:
     build:
       context: .
-      dockerfile: docker/apps/frigate/Dockerfile
+      dockerfile: docker/Dockerfile
+      target: frigate
       args:
         ROCM_VERSION: ${ROCM_VERSION}
         ORT_TAG: ${ORT_TAG}
