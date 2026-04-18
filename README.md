@@ -49,6 +49,19 @@ docker compose run --rm onnx-smoke
 docker compose build frigate
 ```
 
+## CI validation scope
+
+GitHub Actions in this repository validates that the Docker and Compose configuration remain buildable and internally consistent.
+
+That CI does **not** prove:
+
+- that ROCm can execute on a given host
+- that a specific legacy GPU profile works at runtime
+- that ONNX Runtime will successfully expose `ROCMExecutionProvider` on your machine
+- that an application such as Frigate will sustain inference correctly under real workloads
+
+In other words, CI passing means the project still builds. It does not replace local hardware validation.
+
 ## Notes
 
 This project is intentionally conservative about what it claims. A profile being present does not mean it is broadly supported by AMD, ROCm, or an upstream application vendor. It only means the profile is structured for testing here.
