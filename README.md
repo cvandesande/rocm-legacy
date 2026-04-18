@@ -37,22 +37,26 @@ Kubernetes-specific deployment details are out of scope for this project.
 cp profiles/gfx803.env .env
 ```
 
-2. Set the GPU access group IDs from the host:
+2. Build the Frigate image:
+
+```bash
+docker compose build frigate
+```
+
+The host GPU access group IDs are **not** needed for image builds. They only matter when you run the container with GPU device access on a specific host.
+
+## Run locally with Docker Compose
+
+If you want to run the container locally with Docker Compose, get the GPU access groups from the runtime host:
 
 ```bash
 getent group video
 getent group render
 ```
 
-3. Update `.env` with the matching `VIDEO_GID` and `RENDER_GID` values.
+Then update `.env` with the matching `VIDEO_GID` and `RENDER_GID` values for that host.
 
-4. Build the Frigate image:
-
-```bash
-docker compose build frigate
-```
-
-## Run locally with Docker Compose
+Run locally:
 
 ```bash
 docker compose up frigate
@@ -71,7 +75,7 @@ After `docker compose build frigate`, tag the built image for your own registry.
 Example for GHCR:
 
 ```bash
-docker tag rocm-legacy-frigate ghcr.io/cvandesande/frigate-rocm-legacy:gfx803
+docker tag rocm-legacy/frigate:gfx803 ghcr.io/cvandesande/frigate-rocm-legacy:gfx803
 
 docker push ghcr.io/cvandesande/frigate-rocm-legacy:gfx803
 ```
@@ -79,7 +83,7 @@ docker push ghcr.io/cvandesande/frigate-rocm-legacy:gfx803
 You can also use another tag scheme, for example including the ROCm version or application version:
 
 ```bash
-docker tag rocm-legacy-frigate ghcr.io/cvandesande/frigate-rocm-legacy:gfx803-rocm5.5.1
+docker tag rocm-legacy/frigate:gfx803 ghcr.io/cvandesande/frigate-rocm-legacy:gfx803-rocm5.5.1
 ```
 
 ## Validation target
