@@ -68,26 +68,6 @@ or for a one-shot test run:
 docker compose run --rm frigate
 ```
 
-## Build, tag, and push your own image
-
-After `docker compose build frigate`, tag the built image for your own registry.
-
-Example for GHCR:
-
-```bash
-docker tag rocm-legacy/frigate:gfx803 ghcr.io/cvandesande/frigate-rocm-legacy:gfx803
-
-docker push ghcr.io/cvandesande/frigate-rocm-legacy:gfx803
-```
-
-You can also use another tag scheme, for example including the ROCm version or application version:
-
-```bash
-docker tag rocm-legacy/frigate:gfx803 ghcr.io/cvandesande/frigate-rocm-legacy:gfx803-rocm5.5.1
-```
-
-## Validation target
-
 The `onnx-smoke` target is kept as a diagnostic tool. It is useful for verifying that the pinned userspace and ONNX Runtime wheel still build cleanly and that the runtime reports ROCm support on a real host.
 
 ```bash
