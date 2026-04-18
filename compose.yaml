@@ -1,5 +1,6 @@
 services:
   onnx-smoke:
+    image: rocm-legacy/onnx-smoke:${PROFILE_NAME}
     build:
       context: .
       dockerfile: docker/Dockerfile
@@ -24,6 +25,7 @@ services:
       - ./models:/models
 
   frigate:
+    image: rocm-legacy/frigate:${PROFILE_NAME}
     build:
       context: .
       dockerfile: docker/Dockerfile
