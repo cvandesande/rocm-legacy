@@ -53,7 +53,7 @@ COPY docker/scripts/setup_rocm_userspace.sh /usr/local/bin/setup_rocm_userspace.
 RUN chmod +x /usr/local/bin/setup_rocm_userspace.sh \
     && apt-get update \
     && apt-get install -y libstdc++-11-dev \
-    && /usr/local/bin/setup_rocm_userspace.sh "${AMDGPU_DEB_URL}" lrt,hip,mllib
+    && /usr/local/bin/setup_rocm_userspace.sh "${AMDGPU_DEB_URL}" lrt,hip
 COPY --from=ort-builder /src/onnxruntime/build/Linux/Release/dist/*.whl /tmp/
 RUN python3 -m pip uninstall -y --break-system-packages onnxruntime onnxruntime-rocm || true \
     && python3 -m pip install --no-cache-dir --break-system-packages "numpy<2" \
