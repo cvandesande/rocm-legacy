@@ -18,9 +18,9 @@ The first target is ONNX Runtime with ROCm, with Frigate as a flagship applicati
 ## Current structure
 
 - `profiles/` contains tested and experimental GPU family profiles
-- `docker/base/` contains reusable ROCm runtime and ONNX Runtime builder stages
-- `docker/apps/` contains application-specific images such as Frigate and minimal ONNX Runtime smoke tests
-- `scripts/` contains convenience helpers for detection and validation
+- `docker/Dockerfile` contains the shared multi-target build
+- `docker/scripts/` contains the reusable setup and build logic used by the Docker targets
+- `scripts/` contains convenience helpers for validation
 - `docs/` contains the support matrix and project notes
 
 ## Quick start
