@@ -34,8 +34,7 @@ COPY scripts/validate_runtime.sh /usr/local/bin/validate_runtime.sh
 RUN chmod +x /usr/local/bin/install_python311.sh /usr/local/bin/setup_rocm_userspace.sh /usr/local/bin/validate_runtime.sh \
     && /usr/local/bin/install_python311.sh \
     && /usr/local/bin/setup_rocm_userspace.sh "${AMDGPU_DEB_URL}" lrt,hip,mllib \
-    && python3.11 -m pip install --upgrade pip \
-    && python3.11 -m pip install --no-cache-dir /tmp/placeholder || true
+    && python3.11 -m pip install --upgrade pip
 COPY --from=ort-builder /src/onnxruntime/build/Linux/Release/dist/*.whl /tmp/
 RUN python3.11 -m pip install --no-cache-dir /tmp/*.whl \
     && rm -f /tmp/*.whl
