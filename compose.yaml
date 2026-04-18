@@ -19,8 +19,8 @@ services:
       - /dev/kfd
       - /dev/dri
     group_add:
-      - ${VIDEO_GID}
-      - ${RENDER_GID}
+      - ${VIDEO_GID:-44}
+      - ${RENDER_GID:-109}
     volumes:
       - ./models:/models
 
@@ -35,7 +35,7 @@ services:
         ORT_TAG: ${ORT_TAG}
         AMDGPU_DEB_URL: ${AMDGPU_DEB_URL}
         HIP_ARCH: ${HIP_ARCH}
-        FRIGATE_IMAGE: ${FRIGATE_IMAGE}
+        FRIGATE_IMAGE: ${FRIGATE_IMAGE:-ghcr.io/blakeblackshear/frigate:stable}
     environment:
       PROFILE_NAME: ${PROFILE_NAME}
       HSA_OVERRIDE_GFX_VERSION: ${HSA_OVERRIDE_GFX_VERSION}
@@ -44,8 +44,8 @@ services:
       - /dev/kfd
       - /dev/dri
     group_add:
-      - ${VIDEO_GID}
-      - ${RENDER_GID}
+      - ${VIDEO_GID:-44}
+      - ${RENDER_GID:-109}
     volumes:
       - ./config:/config
       - ./models:/models
