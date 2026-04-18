@@ -1,0 +1,47 @@
+services:
+  onnx-smoke:
+    build:
+      context: .
+      dockerfile: docker/apps/standalone-onnx/Dockerfile
+      args:
+        ROCM_VERSION: ${ROCM_VERSION}
+        ORT_TAG: ${ORT_TAG}
+        AMDGPU_DEB_URL: ${AMDGPU_DEB_URL}
+        HIP_ARCH: ${HIP_ARCH}
+    environment:
+      PROFILE_NAME: ${PROFILE_NAME}
+      HSA_OVERRIDE_GFX_VERSION: ${HSA_OVERRIDE_GFX_VERSION}
+      ROC_ENABLE_PRE_VEGA: ${ROC_ENABLE_PRE_VEGA:-0}
+      MODEL_PATH: /models/model.onnx
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+      - render
+    volumes:
+      - ./models:/models
+
+  frigate:
+    build:
+      context: .
+      dockerfile: docker/apps/frigate/Dockerfile
+      args:
+        ROCM_VERSION: ${ROCM_VERSION}
+        ORT_TAG: ${ORT_TAG}
+        AMDGPU_DEB_URL: ${AMDGPU_DEB_URL}
+        HIP_ARCH: ${HIP_ARCH}
+        FRIGATE_IMAGE: ${FRIGATE_IMAGE}
+    environment:
+      PROFILE_NAME: ${PROFILE_NAME}
+      HSA_OVERRIDE_GFX_VERSION: ${HSA_OVERRIDE_GFX_VERSION}
+      ROC_ENABLE_PRE_VEGA: ${ROC_ENABLE_PRE_VEGA:-0}
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+      - render
+    volumes:
+      - ./config:/config
+      - ./models:/models
