@@ -18,8 +18,8 @@ services:
       - /dev/kfd
       - /dev/dri
     group_add:
-      - video
-      - render
+      - ${VIDEO_GID}
+      - ${RENDER_GID}
     volumes:
       - ./models:/models
 
@@ -42,8 +42,8 @@ services:
       - /dev/kfd
       - /dev/dri
     group_add:
-      - video
-      - render
+      - ${VIDEO_GID}
+      - ${RENDER_GID}
     volumes:
       - ./config:/config
       - ./models:/models
