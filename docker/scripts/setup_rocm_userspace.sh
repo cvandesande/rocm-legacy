@@ -17,5 +17,5 @@ wget -O /tmp/vendor-gpu-userspace.deb "${REPO_DEB_URL}"
 apt-get update
 apt-get install -y /tmp/vendor-gpu-userspace.deb
 amdgpu-install -y --usecase="${USECASE}" --no-dkms
-apt-get install -y migraphx half roctracer miopen-hip-dev
+apt-get install -y migraphx half roctracer
 rm -rf /var/lib/apt/lists/* /var/cache/apt/* /tmp/vendor-gpu-userspace.deb
