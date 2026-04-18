@@ -1,0 +1,40 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  validate-compose-and-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create test env file
+        run: |
+          cat > .env <<'EOF'
+          PROFILE_NAME=gfx803
+          ROCM_VERSION=5.5.1
+          ORT_TAG=v1.16.3
+          AMDGPU_DEB_URL=https://repo.radeon.com/amdgpu-install/5.5.1/ubuntu/jammy/amdgpu-install_5.5.50501-1_all.deb
+          HIP_ARCH=gfx803
+          HSA_OVERRIDE_GFX_VERSION=8.0.3
+          ROC_ENABLE_PRE_VEGA=0
+          FRIGATE_IMAGE=ghcr.io/blakeblackshear/frigate:stable
+          MODEL_PATH=./models/model.onnx
+          EOF
+
+      - name: Validate Docker Compose config
+        run: docker compose config > /tmp/compose.resolved.yaml
+
+      - name: Build onnx-smoke target
+        run: docker compose build onnx-smoke
+
+      - name: Build frigate target
+        run: docker compose build frigate
