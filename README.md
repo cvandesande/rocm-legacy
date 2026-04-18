@@ -6,23 +6,26 @@ Frigate image builds for legacy AMD GPUs using pinned ROCm-era userspace and ONN
 
 `rocm-legacy` is a practical build repo for reviving older AMD GPUs that are no longer supported in current ROCm releases, but can still be useful for inference workloads.
 
-The primary output of this repository is a Frigate-compatible container image. A secondary validation target is included to help check whether ONNX Runtime still exposes ROCm support before deploying the full application.
+The primary output of this repository is a Frigate-compatible container image. A secondary validation target is included to help check whether ONNX Runtime still exposes ROCm support before building the full application image.
 
-## Primary use case
+## Public scope
+
+This repository is intentionally Docker- and Compose-focused.
 
 The intended workflow is:
 
 1. pick a compatibility profile
 2. build a Frigate image
-3. push that image to a registry such as GHCR
-4. deploy it to a Kubernetes node with AMD GPU access
+3. optionally run the image locally with Docker Compose
+4. tag and push the image to your own registry
+
+Kubernetes-specific deployment details are out of scope for this project.
 
 ## Repository structure
 
 - `profiles/` contains tested and experimental GPU family profiles
 - `docker/Dockerfile` contains the shared multi-target build
 - `docker/scripts/` contains the reusable setup and build logic used by the Docker targets
-- `k8s/` contains example Kubernetes manifests for deploying the image
 - `scripts/` contains convenience helpers for validation
 - `docs/` contains the support matrix and project notes
 
@@ -49,9 +52,23 @@ getent group render
 docker compose build frigate
 ```
 
-## Push the image to GHCR
+## Run locally with Docker Compose
 
-Example:
+```bash
+docker compose up frigate
+```
+
+or for a one-shot test run:
+
+```bash
+docker compose run --rm frigate
+```
+
+## Build, tag, and push your own image
+
+After `docker compose build frigate`, tag the built image for your own registry.
+
+Example for GHCR:
 
 ```bash
 docker tag rocm-legacy-frigate ghcr.io/cvandesande/frigate-rocm-legacy:gfx803
@@ -59,7 +76,11 @@ docker tag rocm-legacy-frigate ghcr.io/cvandesande/frigate-rocm-legacy:gfx803
 docker push ghcr.io/cvandesande/frigate-rocm-legacy:gfx803
 ```
 
-Adjust the tag to match your profile and release process.
+You can also use another tag scheme, for example including the ROCm version or application version:
+
+```bash
+docker tag rocm-legacy-frigate ghcr.io/cvandesande/frigate-rocm-legacy:gfx803-rocm5.5.1
+```
 
 ## Validation target
 
@@ -69,18 +90,6 @@ The `onnx-smoke` target is kept as a diagnostic tool. It is useful for verifying
 docker compose build onnx-smoke
 docker compose run --rm onnx-smoke
 ```
-
-## Kubernetes deployment notes
-
-The example manifests under `k8s/` are intentionally generic. They are meant as a starting point for clusters that already provide AMD GPU access on selected nodes.
-
-In practice you will usually need to adapt at least:
-
-- image name and tag
-- Frigate config mount path and storage class
-- node selectors and tolerations for GPU nodes
-- device plugin expectations or host device exposure model
-- ingress, service, and persistent storage choices
 
 ## CI validation scope
 
