@@ -13,7 +13,7 @@ This repository builds a Frigate image with:
 
 In other words, it builds a Frigate image with an old version of ROCM that supported older AMD GPUs.
 
-## Tested defaults
+## Defaults
 
 | Component | Default / tested value |
 |---|---|
@@ -24,7 +24,7 @@ In other words, it builds a Frigate image with an old version of ROCM that suppo
 | HIP architecture for `gfx803` | `gfx803` |
 | HSA override for `gfx803` | `8.0.3` |
 
-## Profile matrix
+## Tested profiles
 
 | Profile | ROCm | ONNX Runtime | HIP arch | HSA override | Status |
 |---|---:|---:|---|---|---|
