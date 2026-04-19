@@ -1,17 +1,17 @@
 # rocm-legacy
 
-Frigate image builds for legacy AMD GPUs using pinned ROCm-era userspace and ONNX Runtime ROCm wheels.
+Frigate image builds for legacy AMD GPUs using pinned ROCm versions and ONNX Runtime ROCm wheels.
 
 ## What you get
 
-This repository does not just build a stock Frigate container. It builds a Frigate image with:
+This repository builds a Frigate image with:
 
 - a pinned Frigate base image, defaulting to `ghcr.io/blakeblackshear/frigate:0.17.1`
 - pinned ROCm userspace, defaulting to ROCm `5.5.1` for the `gfx803` profile
 - a pinned ONNX Runtime ROCm wheel, defaulting to ONNX Runtime `v1.16.3`
 - ONNX Runtime compiled for the GPU architecture selected by the active profile, such as `gfx803`
 
-In other words, the main output is a Frigate image layered with a profile-specific ROCm userspace and a profile-specific ONNX Runtime ROCm build.
+In other words, it builds a Frigate image with an old version of ROCM that supported older AMD GPUs.
 
 ## Tested defaults
 
@@ -35,9 +35,9 @@ In other words, the main output is a Frigate image layered with a profile-specif
 
 `rocm-legacy` is a practical build repo for reviving older AMD GPUs that are no longer supported in current ROCm releases, but can still be useful for inference workloads.
 
-The primary output of this repository is a Frigate-compatible container image. A secondary validation target is included to help check whether ONNX Runtime still exposes ROCm support before building the full application image.
+The primary output of this repository is a Frigate-compatible container image.
 
-## Public scope
+## Usage
 
 This repository is intentionally Docker- and Compose-focused.
 
@@ -110,34 +110,9 @@ docker compose run --rm onnx-smoke
 
 After `docker compose build frigate`, tag the built image for your own registry.
 
-Example for GHCR:
-
-```bash
-docker tag rocm-legacy/frigate:gfx803 ghcr.io/cvandesande/frigate-rocm-legacy:gfx803
-
-docker push ghcr.io/cvandesande/frigate-rocm-legacy:gfx803
-```
-
-You can also use another tag scheme, for example including the ROCm version or application version:
-
-```bash
-docker tag rocm-legacy/frigate:gfx803 ghcr.io/cvandesande/frigate-rocm-legacy:gfx803-rocm5.5.1
-```
-
 ## CI validation scope
 
 GitHub Actions in this repository validates that the Docker and Compose configuration remain buildable and internally consistent.
-
-That CI does **not** prove:
-
-- that ROCm can execute on a given host
-- that a specific legacy GPU profile works at runtime
-- that ONNX Runtime will successfully expose `ROCMExecutionProvider` on your machine
-- that Frigate will sustain inference correctly under real workloads
-
-In other words, CI passing means the project still builds. It does not replace local hardware validation.
-
-## Notes
 
 This project is intentionally conservative about what it claims. A profile being present does not mean it is broadly supported by AMD, ROCm, or an upstream application vendor. It only means the profile is structured for testing here.
 
