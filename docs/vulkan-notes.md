@@ -73,6 +73,37 @@ The `gfx803-vulkan` profile builds an ncnn wheel with Vulkan enabled and uses
 Mesa RADV at runtime. Standalone smoke validation has passed on the target
 host; live Frigate detector inference remains under validation.
 
+### 2026-08-15 — rollback path for the Leptos UI overlay, and D1's `/pkg/` patch
+
+Corvette issue #2 overlays the Leptos UI build into the donor's
+`/opt/frigate/web` at build time: `docker/Dockerfile.py313:125` runs
+`COPY --from=corvette-ui /site/ /opt/frigate/web/`, after the donor copy at
+`docker/Dockerfile.py313:114` (`COPY --from=donor /opt/frigate /opt/frigate`).
+It is an overlay into the existing directory, not a replacement of it —
+Frigate's unmodified web assets stay in place underneath.
+
+**Rollback** is a human procedure, nothing here performs it automatically:
+repoint the k8s manifest (`~/dockers/kubernetes/tirnanog/frigate.yaml`, the
+same file `scripts/release_image.sh` prints as the deploy target) at the last
+dated tag built *before* the overlay landed. As recorded above, that is
+`20260802` = `sha256:87ca89854b19e75c0f9895d5481024ee927be197d9d2bb87607dc9bedbdb422b`
+— published before this entry's commits and so still carrying Frigate's
+unmodified `/opt/frigate/web` end to end.
+
+The overlay depends on a standing nginx patch, D1 (commit `b9a0f45`,
+`docker/Dockerfile.py313`, `docker/scripts/patch_pkg_location.py`): it nests
+`location /pkg/ { add_header Cache-Control "no-cache"; }` inside the donor's
+`location /`, the same way the donor already nests `/assets/`, `/fonts/` and
+`/locales/`. Nesting means `/pkg/` does not inherit the parent's `try_files`
+SPA fallback, so a missing chunk 404s instead of returning `index.html` at
+200; `no-cache` (no `expires`, no positive `max-age`) makes the browser
+revalidate every load instead of caching a stale bundle. The patch is guarded
+by an md5 pin on the donor's `nginx.conf` (`EXPECTED_MD5` in
+`patch_pkg_location.py`, checked against Frigate v0.17.2 `3d4dd3ac4`): if
+`FRIGATE_IMAGE` ever drifts to an nginx.conf this patch was not written
+against, the build fails loudly naming the mismatch instead of silently
+reintroducing the try_files miss.
+
 ## Hardware validation
 
 ### 2026-07-19 — gfx803 Vulkan smoke test: fp32 parity passed
