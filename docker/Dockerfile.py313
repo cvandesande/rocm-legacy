@@ -68,6 +68,16 @@ COPY --from=donor /etc/s6-overlay /etc/s6-overlay
 # run on 2.41, so only the 7.0 build is carried -- 5.0 is 211MB of fallback
 # this deployment never selects.
 COPY --from=donor /usr/local/nginx /usr/local/nginx
+
+# Corvette issue #2 (D1): the donor's nginx has no location for the Leptos UI
+# bundle, so a missing chunk under /pkg/ silently returns index.html at 200
+# instead of a 404, and every chunk is Cache-Control: no-store. Nested inside
+# the donor's own `location /`, the same way it already nests /assets/,
+# /fonts/ and /locales/. Fails the build if the donor's nginx.conf has drifted
+# from the pinned revision -- see the script for the full rationale.
+COPY docker/scripts/patch_pkg_location.py /usr/local/bin/patch_pkg_location.py
+RUN python3 /usr/local/bin/patch_pkg_location.py
+
 COPY --from=donor /usr/local/go2rtc /usr/local/go2rtc
 COPY --from=donor /usr/local/tempio /usr/local/tempio
 COPY --from=donor /usr/local/ffmpeg /usr/local/ffmpeg
