@@ -19,6 +19,17 @@ ARG FRIGATE_IMAGE=ghcr.io/blakeblackshear/frigate:0.17.2
 ARG NCNN_TAG=20260526
 ARG PYTHON_IMAGE=python:3.13-slim-trixie
 
+# Corvette issue #2 (D2): the Leptos UI replacement, built and pushed
+# separately, consumed here only by digest -- never a floating tag (INV-4).
+# CORVETTE_VERSION is the dated tag the digest below was pushed under; it is
+# not itself trusted for anything but a human-readable label, since
+# CORVETTE_UI_IMAGE's @sha256 is what actually pins the FROM. The default
+# here is the real digest recorded in corvette's
+# .agents/issue-2/evidence/corvette-ui-digest.txt after the first push
+# (commit d93ad1d) -- never a placeholder or hand-typed value.
+ARG CORVETTE_VERSION=20260815
+ARG CORVETTE_UI_IMAGE=docker.io/cvandesande/corvette-ui:${CORVETTE_VERSION}@sha256:32383ee4a8f0f49eccc78953bd225f1cd775ae5274ddd6e56949b7e72006c365
+
 FROM ${PYTHON_IMAGE} AS ncnn-builder
 ARG NCNN_TAG
 COPY docker/scripts/build_ncnn_wheel.sh /usr/local/bin/build_ncnn_wheel.sh
@@ -30,7 +41,21 @@ RUN chmod +x /usr/local/bin/build_ncnn_wheel.sh \
 
 FROM ${FRIGATE_IMAGE} AS donor
 
+FROM ${CORVETTE_UI_IMAGE} AS corvette-ui
+
 FROM ${PYTHON_IMAGE} AS frigate-vulkan-py313
+
+# Re-enter scope: ARGs declared before the first FROM do not carry into any
+# stage automatically, each stage that needs one must redeclare it bare.
+ARG CORVETTE_VERSION
+ARG CORVETTE_UI_IMAGE
+
+# INV-4: fail the build before anything else happens if CORVETTE_UI_IMAGE is
+# not pinned by digest. A bare repo:tag would still pull successfully above
+# (docker.io/cvandesande/corvette-ui:20260815 is a real, resolvable tag), so
+# the FROM on its own cannot catch this -- only an explicit check can.
+COPY docker/scripts/check_corvette_ui_image.py /usr/local/bin/check_corvette_ui_image.py
+RUN CORVETTE_UI_IMAGE="${CORVETTE_UI_IMAGE}" python3 /usr/local/bin/check_corvette_ui_image.py
 
 # openssl and yq are called by the s6 nginx/prepare scripts; mountpoint comes
 # from util-linux. mesa-vulkan-drivers here is Trixie's own 25.x.
@@ -87,6 +112,17 @@ COPY --from=donor /usr/local/bin/yq /usr/local/bin/yq
 COPY --from=donor /usr/local/lib/vec0.so /usr/local/lib/vec0.so
 COPY --from=donor /usr/lib/ffmpeg/7.0 /usr/lib/ffmpeg/7.0
 COPY --from=donor /opt/frigate /opt/frigate
+
+# Corvette issue #2 (D2): overlay the Leptos UI build into the donor's
+# /opt/frigate/web. INV-2 -- this must never delete, move, or replace the
+# directory or anything already in it (login.html, /assets/, /fonts/,
+# /locales/, robots.txt, notifications-worker.js all keep working); the
+# trailing slash on both sides is load-bearing, it makes this a merge into
+# the existing directory, not a replacement of it. Only index.html is
+# overwritten, by design -- Corvette's shell replaces Frigate's React
+# index.html. /site/'s own contents are exactly index.html and pkg/** (INV-1
+# is enforced upstream, at publish time, not here).
+COPY --from=corvette-ui /site/ /opt/frigate/web/
 
 # labelmap.txt is the default detector labelmap and is read during config
 # validation, so it is required even for a model that ships its own. The two

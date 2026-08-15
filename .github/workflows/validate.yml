@@ -23,6 +23,7 @@ jobs:
         run: |
           bash -n docker/scripts/build_ncnn_wheel.sh \
             docker/scripts/install_python.sh \
+            docker/scripts/check_overlay_guard.sh \
             scripts/build.sh \
             scripts/export_ncnn_model.sh \
             scripts/convert_plus_onnx.sh \
@@ -30,8 +31,17 @@ jobs:
             scripts/release_image.sh \
             scripts/validate_vulkan.sh
           python3 -m py_compile docker/frigate/ncnn.py \
+            docker/scripts/check_corvette_ui_image.py \
             scripts/bench_steady.py \
             scripts/dynamic_clock_pin.py
+
+      # Corvette issue #2 (D2), INV-2: overlay, never replace. A static check
+      # over the Dockerfiles' text, independent of docker/Dockerfile.py313's
+      # own build-time proof (the image assertions run manually against the
+      # built image -- see D2's evidence) -- this one catches a violation
+      # even in a stage a given build target does not happen to reach.
+      - name: Enforce the overlay guard (INV-2) over docker/Dockerfile*
+        run: docker/scripts/check_overlay_guard.sh
 
       - name: Validate Docker Compose config for every profile
         run: |
