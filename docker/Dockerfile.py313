@@ -138,6 +138,17 @@ COPY --from=donor /usr/local/nginx /usr/local/nginx
 COPY docker/scripts/patch_pkg_location.py /usr/local/bin/patch_pkg_location.py
 RUN python3 /usr/local/bin/patch_pkg_location.py
 
+# Corvette issue #12 (N1, resolving OPEN-2): the donor's nginx has no
+# /live/hls/ location. D-6 fully replaces go2rtc, including its own
+# HLS-adjacent role, so the expanded-view fallback needs a real backend once
+# go2rtc is gone -- G3 (corvette-media-bridge's own HLS/LL-HLS packager,
+# a sibling container in this pod per K1) is that backend. Must run AFTER
+# patch_pkg_location.py: this script's own drift guard checks the md5 of
+# nginx.conf with the /pkg/ location already inserted, not the pristine
+# donor's -- see the script for the full rationale.
+COPY docker/scripts/patch_live_hls_location.py /usr/local/bin/patch_live_hls_location.py
+RUN python3 /usr/local/bin/patch_live_hls_location.py
+
 COPY --from=donor /usr/local/go2rtc /usr/local/go2rtc
 COPY --from=donor /usr/local/tempio /usr/local/tempio
 COPY --from=donor /usr/local/ffmpeg /usr/local/ffmpeg
