@@ -49,6 +49,33 @@ CMD ["/usr/local/bin/validate_vulkan.sh"]
 
 FROM ${FRIGATE_IMAGE} AS frigate-vulkan
 USER root
+
+# Corvette issue #12 (F1): stop go2rtc from starting at all. See
+# docker/Dockerfile.py313's identical step for the full rationale (this
+# deployment's own detect/record path is being moved off go2rtc by #12, and
+# go2rtc's live-view role is unused here already). Unlike Dockerfile.py313,
+# this target extends the donor image directly rather than copying files out
+# of it, so the s6-rc database is the donor's own, unmodified until this RUN.
+#
+# Both edges naming go2rtc in the donor's s6-rc database must be cut, not just
+# the obvious one: `frigate`'s own declared dependency on go2rtc AND go2rtc's
+# independent membership in the top-level `user` bundle via the synthetic
+# "go2rtc-pipeline" bundle s6-overlay generates for every longrun that is a
+# producer-for a log service (go2rtc-healthcheck shares that same pipeline and
+# is disabled the same way, as a side effect). Confirmed empirically against
+# the donor image directly: with only the `frigate` dependency marker removed,
+# `go2rtc: starting` still appears in the s6-rc boot log; with both markers
+# removed, neither go2rtc nor go2rtc-healthcheck starts, nothing binds :8554,
+# and Frigate still reaches its normal ready state (frigate/app.py's
+# init_go2rtc is a bare psutil scan for an already-running process -- it never
+# spawns go2rtc and does not fail when the scan finds nothing).
+#
+# The go2rtc service directory and its `run` script's create_config.py
+# invocation are left in place -- with both edges cut, s6-rc never starts the
+# service, so that script never executes.
+RUN rm -f /etc/s6-overlay/s6-rc.d/frigate/dependencies.d/go2rtc \
+          /etc/s6-overlay/s6-rc.d/user/contents.d/go2rtc-pipeline
+
 # Frigate 0.17.2's base is Bookworm, whose mesa-vulkan-drivers is 22.3.6 (Dec
 # 2022). Under that RADV, sustained ncnn compute on Vega 20 timed out the gfx
 # ring and forced a BACO reset of the card (VRAM lost, VkDevice permanently

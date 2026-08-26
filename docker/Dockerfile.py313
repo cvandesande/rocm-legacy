@@ -89,6 +89,41 @@ COPY --from=donor /command /command
 COPY --from=donor /package /package
 COPY --from=donor /etc/s6-overlay /etc/s6-overlay
 
+# Corvette issue #12 (F1): stop go2rtc from starting at all. This deployment's
+# Frigate config routes detect/record through go2rtc's own RTSP restream
+# (issue #12 RESEARCH-frigate-ingest-boundary.md F-4/F-5), which #12 replaces
+# with a Rust-native RTSP-restream server (D-6/D-7) running as a sibling
+# container, and go2rtc's live-view role (mse/webrtc) is unused here (F-8/F-9)
+# -- so once that replacement ships, nothing in this image should need go2rtc.
+#
+# Two edges in the donor's s6-rc database name go2rtc, and BOTH must be cut,
+# not just the obvious one:
+#   - s6-rc.d/frigate/dependencies.d/go2rtc -- the `frigate` service's own
+#     declared startup dependency on go2rtc (the one upstream Frigate's own
+#     docs/source describe).
+#   - s6-rc.d/user/contents.d/go2rtc-pipeline -- go2rtc is ALSO wired directly
+#     into the top-level `user` bundle s6-overlay brings up at boot, via the
+#     synthetic "-pipeline" bundle s6-overlay generates for every longrun that
+#     is a producer-for a log service. This is independent of frigate's own
+#     dependency edge above: removing only the `frigate` dependency marker
+#     leaves go2rtc-pipeline still listed here, so go2rtc (and its sibling
+#     go2rtc-healthcheck, which shares the same log pipeline) still starts as
+#     its own top-level target regardless of whether frigate waits on it.
+#     Confirmed empirically against the donor image directly (not assumed from
+#     source alone): with only the first marker removed, `go2rtc: starting`
+#     still appears in the s6-rc boot log; with both removed, neither go2rtc
+#     nor go2rtc-healthcheck ever starts, nothing binds :8554, and Frigate
+#     still reaches its normal ready state (init_go2rtc, frigate/app.py, is a
+#     bare psutil scan for an already-running process -- it never spawns
+#     go2rtc itself and does not fail when the scan finds nothing).
+#
+# Neither the go2rtc service directory itself nor create_config.py's
+# invocation inside its `run` script is removed -- with both edges above cut,
+# s6-rc never brings the service up, so that script never executes and is
+# harmless left in place.
+RUN rm -f /etc/s6-overlay/s6-rc.d/frigate/dependencies.d/go2rtc \
+          /etc/s6-overlay/s6-rc.d/user/contents.d/go2rtc-pipeline
+
 # Prebuilt components. ffmpeg links nothing but glibc, and glibc 2.36 binaries
 # run on 2.41, so only the 7.0 build is carried -- 5.0 is 211MB of fallback
 # this deployment never selects.
