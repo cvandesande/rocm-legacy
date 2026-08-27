@@ -149,6 +149,21 @@ RUN python3 /usr/local/bin/patch_pkg_location.py
 COPY docker/scripts/patch_live_hls_location.py /usr/local/bin/patch_live_hls_location.py
 RUN python3 /usr/local/bin/patch_live_hls_location.py
 
+# Corvette issue #12 (N2): D-6 fully replaces go2rtc, not only its live-view
+# role, so every location in the donor's nginx.conf that proxies to the
+# go2rtc upstream is permanently dead -- five of them, confirmed directly
+# against tests/nginx-parity/vendor/nginx.conf (corvette). Four have no
+# replacement; the fifth, /live/mse/api/ws, is replaced by a new location
+# proxying to G2 (corvette-media-bridge's own fMP4-over-WebSocket packager,
+# a sibling container in this pod per K1), since the grid tile's live view
+# (corvette's crates/corvette-ui/src/live_view.rs, item U1) depends on that
+# replacement existing. Must run AFTER patch_live_hls_location.py: this
+# script's own drift guard checks the md5 of nginx.conf with both the /pkg/
+# and /live/hls/ locations already inserted, not the pristine donor's -- see
+# the script for the full rationale.
+COPY docker/scripts/patch_retire_go2rtc_routes.py /usr/local/bin/patch_retire_go2rtc_routes.py
+RUN python3 /usr/local/bin/patch_retire_go2rtc_routes.py
+
 COPY --from=donor /usr/local/go2rtc /usr/local/go2rtc
 COPY --from=donor /usr/local/tempio /usr/local/tempio
 COPY --from=donor /usr/local/ffmpeg /usr/local/ffmpeg
