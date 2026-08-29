@@ -25,10 +25,13 @@ ARG PYTHON_IMAGE=python:3.13-slim-trixie
 # not itself trusted for anything but a human-readable label, since
 # CORVETTE_UI_IMAGE's @sha256 is what actually pins the FROM. The default
 # here is the real digest recorded in corvette's
-# .agents/issue-2/evidence/corvette-ui-digest.txt after the first push
-# (commit d93ad1d) -- never a placeholder or hand-typed value.
-ARG CORVETTE_VERSION=20260815
-ARG CORVETTE_UI_IMAGE=docker.io/cvandesande/corvette-ui:${CORVETTE_VERSION}@sha256:32383ee4a8f0f49eccc78953bd225f1cd775ae5274ddd6e56949b7e72006c365
+# .agents/issue-2/evidence/corvette-ui-digest.txt after the 2026-08-29 push
+# (commit b6f856a, issue #12 U1/U2 -- the previous 20260815 digest predated
+# both and still shipped the retired go2rtc iframe player, which broke once
+# N2 removed its backing nginx routes) -- never a placeholder or hand-typed
+# value.
+ARG CORVETTE_VERSION=20260829
+ARG CORVETTE_UI_IMAGE=docker.io/cvandesande/corvette-ui:${CORVETTE_VERSION}@sha256:86342f86d2896b3570997ff2e5dc86947d5a5414b9110f2943c0aa8f23eea710
 
 FROM ${PYTHON_IMAGE} AS ncnn-builder
 ARG NCNN_TAG
