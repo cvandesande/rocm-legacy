@@ -122,6 +122,32 @@ OLD_LOCATION = """        location /live/jsmpeg/ {
 # reason to omit it here. `include auth_request.conf;` matches every other
 # proxied location in this file -- this route carries no exception from the
 # deployment's own auth gate.
+#
+# The two `proxy_set_header` lines after `include proxy.conf;` override that
+# shared file's own unconditional `proxy_set_header Connection "Upgrade";
+# proxy_set_header Upgrade $http_upgrade;` -- forced on every proxied
+# location in this donor nginx.conf, not just real Upgrade requests, and not
+# gated behind the `map $http_upgrade $connection_upgrade` pattern a correct
+# WebSocket-proxying config uses. Removing `keepalive` from `corvette_hls`
+# (this file's own history, see this module's git log) fixed the original
+# 503s but traded them for something worse: every authenticated request
+# through the real deployment's own external ingress stalled 20-30 seconds
+# before failing, confirmed directly against `frigate-0`'s own nginx access
+# log (`request_time`/`upstream_response_time` both ~20-30s, ending in 499)
+# -- while the exact same backend answered in under 1ms when hit directly,
+# ruling out G3 itself, CPU starvation, and local port exhaustion in turn.
+# The one clean comparison: `/live/mse/ws/` (below), whose upstream still
+# carries `keepalive`, answered a plain GET in 12ms through the identical
+# authenticated path. A `keepalive`-less upstream combined with this donor's
+# blanket "Upgrade" forcing is the one structural difference between a
+# location that hangs and one that doesn't -- since G3 never performs a real
+# protocol upgrade, forcing nginx to consider one is never correct here
+# regardless of the upstream's own `keepalive` setting. Explicitly clearing
+# both headers removes the ambiguity at its source: nginx is told, per
+# request, that this is a plain, non-upgradeable exchange, which is what
+# actually stops it from pooling a connection (fixing the original 503s)
+# without whatever `Connection: Upgrade` plus no `keepalive` was doing to
+# produce the 20-30 second stalls.
 NEW_LOCATION = """        location /live/jsmpeg/ {
             include auth_request.conf;
             proxy_pass http://jsmpeg/;
@@ -142,6 +168,8 @@ NEW_LOCATION = """        location /live/jsmpeg/ {
             }
             proxy_pass http://corvette_hls/;
             include proxy.conf;
+            proxy_set_header Connection "close";
+            proxy_set_header Upgrade "";
         }
 
         # frigate lovelace card uses this path

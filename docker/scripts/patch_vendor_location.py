@@ -50,7 +50,11 @@ DEFAULT_TARGET = Path("/usr/local/nginx/conf/nginx.conf")
 # patch_live_hls_location.py stopped giving corvette_hls its own `keepalive`
 # line (see that script's own doc): its output, and everything chained after
 # it, changed by those removed bytes.
-EXPECTED_MD5 = "2496b0867a6ef30e4d4b8604a82b3ffa"
+#
+# Re-recorded again after patch_live_hls_location.py added explicit
+# `Connection: close`/empty `Upgrade` headers to its own /live/hls/ location
+# (fourth-incident fix, same doc).
+EXPECTED_MD5 = "4e3d133f5ceb44377e63a07efdecfded"
 
 OLD = """            location /pkg/ {
                 add_header Cache-Control "no-cache";

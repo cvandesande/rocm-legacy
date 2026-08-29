@@ -66,7 +66,11 @@ DEFAULT_TARGET = Path("/usr/local/nginx/conf/nginx.conf")
 # patch_live_hls_location.py stopped giving corvette_hls its own `keepalive`
 # line (see that script's own doc for why: G3's HLS listener never supports
 # keep-alive, and nginx pooling connections to it anyway caused live 503s).
-EXPECTED_MD5 = "23a5d1389b328ea9def1e1cfb392d0f4"
+# Re-recorded again after patch_live_hls_location.py added explicit
+# `Connection: close`/empty `Upgrade` headers to its own /live/hls/ location
+# (see that script's own doc's fourth-incident section: the keepalive
+# removal alone traded the 503s for a worse 20-30 second stall).
+EXPECTED_MD5 = "4ef531e33bb227eebb13ee549abd850b"
 
 OLD_UPSTREAM = """    upstream corvette_hls {
         server 127.0.0.1:8556;
