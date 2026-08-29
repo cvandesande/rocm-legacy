@@ -32,7 +32,7 @@ ARG PYTHON_IMAGE=python:3.13-slim-trixie
 # supersedes the first `20260829` tag with a corrected digest) -- never a
 # placeholder or hand-typed value.
 ARG CORVETTE_VERSION=20260829
-ARG CORVETTE_UI_IMAGE=docker.io/cvandesande/corvette-ui:${CORVETTE_VERSION}@sha256:b5786deec9e2aedda756c47a6f86f690544d9144f9a54893b2f1543569be04c9
+ARG CORVETTE_UI_IMAGE=docker.io/cvandesande/corvette-ui:${CORVETTE_VERSION}@sha256:07363ca37f3720f2d65d78afef7fd0df359be9910088a2d797198e09438c9828
 
 FROM ${PYTHON_IMAGE} AS ncnn-builder
 ARG NCNN_TAG
