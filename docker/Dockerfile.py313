@@ -199,6 +199,28 @@ COPY --from=donor /opt/frigate /opt/frigate
 # upstream, at publish time, not here).
 COPY --from=corvette-ui /site/ /opt/frigate/web/
 
+# Corvette issue #12 (V3): tell the expanded live view where to dial the MoQ
+# relay -- CORVETTE_MOQ_RELAY_URL defaults empty (today's behavior: the
+# expanded view always uses its HLS fallback), so a build with no
+# --build-arg for this is unaffected. See patch_moq_relay_url.py's own doc
+# for why this file needs no EXPECTED_MD5 drift guard the way the nginx
+# patches above do.
+# Matches CORVETTE_UI_IMAGE's own precedent immediately above: this
+# Dockerfile's default is this specific deployment's actual value, not a
+# generic placeholder, and gets overridden per --build-arg for any other
+# deployment. "/anon" mirrors moq_publish.rs's own connect URL shape exactly
+# (corvette's G1 evidence log: "relay=https://127.0.0.1:34097/anon"). Set
+# once the router owner enabled external UDP/443 forwarding to the
+# frigate-moq NodePort -- reachability itself is a real-browser question,
+# not independently re-verified from this build host (a plain curl QUIC
+# probe from here still times out, most plausibly a NAT-hairpin limitation
+# specific to LAN-adjacent clients, not evidence either way about a genuine
+# external client). See .agents/issue-12/PLAN-live-view.md's V3 for the full
+# reachability history.
+ARG CORVETTE_MOQ_RELAY_URL="https://orkcams.opendmz.com/anon"
+COPY docker/scripts/patch_moq_relay_url.py /usr/local/bin/patch_moq_relay_url.py
+RUN CORVETTE_MOQ_RELAY_URL="${CORVETTE_MOQ_RELAY_URL}" python3 /usr/local/bin/patch_moq_relay_url.py
+
 # labelmap.txt is the default detector labelmap and is read during config
 # validation, so it is required even for a model that ships its own. The two
 # CPU tflite models are the fallback detector and audio detection, both working
