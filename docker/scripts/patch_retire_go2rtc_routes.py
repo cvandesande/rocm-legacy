@@ -70,10 +70,15 @@ DEFAULT_TARGET = Path("/usr/local/nginx/conf/nginx.conf")
 # `Connection: close`/empty `Upgrade` headers to its own /live/hls/ location
 # (see that script's own doc's fourth-incident section: the keepalive
 # removal alone traded the 503s for a worse 20-30 second stall).
-EXPECTED_MD5 = "4ef531e33bb227eebb13ee549abd850b"
+# Re-recorded a third time after patch_live_hls_location.py restored
+# `keepalive 1024;` on `corvette_hls` (same doc): removing it had been the
+# actual regression, not the fix -- corvette_hls was the only upstream in
+# this whole file without one.
+EXPECTED_MD5 = "8961358cf897c66450268570e2964ac3"
 
 OLD_UPSTREAM = """    upstream corvette_hls {
         server 127.0.0.1:8556;
+        keepalive 1024;
     }
 
     include go2rtc_upstream.conf;
@@ -89,13 +94,18 @@ OLD_UPSTREAM = """    upstream corvette_hls {
 # not an error, and removing it is not something this item's Do steps ask
 # for -- go2rtc's own removal from this image is F1's item, not this one's.
 #
-# `corvette_fmp4_ws` keeps its own `keepalive 1024;`, unlike `corvette_hls`
-# above it: G2's WebSocket listener holds one long-lived connection per
-# viewer for as long as the tile stays mounted (`ws_repackager.rs`), nothing
-# like G3's one-request-then-close HLS server, so nginx pooling idle
-# keep-alive connections to it carries none of `corvette_hls`'s failure mode.
+# `corvette_fmp4_ws` carries its own `keepalive 1024;` for the same reason
+# `corvette_hls` now does (see `upstream corvette_hls`'s own doc in
+# patch_live_hls_location.py): G2's WebSocket listener holds one long-lived
+# connection per viewer for as long as the tile stays mounted
+# (`ws_repackager.rs`), nothing like G3's one-request-then-close HLS server,
+# so nginx pooling idle keep-alive connections to it was never in question --
+# `corvette_hls`'s own "don't reuse a connection to a backend that closes it"
+# guarantee comes from its `/live/hls/` location's explicit `Connection:
+# close` header instead, not from omitting `keepalive` at the upstream level.
 NEW_UPSTREAM = """    upstream corvette_hls {
         server 127.0.0.1:8556;
+        keepalive 1024;
     }
 
     upstream corvette_fmp4_ws {

@@ -71,25 +71,35 @@ OLD_UPSTREAM = """    upstream jsmpeg {
 # configurable) -- G3's HLS port has no such user-facing configuration point,
 # so it belongs with jsmpeg's style, not go2rtc's.
 #
-# Deliberately WITHOUT jsmpeg's own `keepalive 1024;` line, unlike every other
-# upstream in this block: G3's own HLS listener
-# (crates/corvette-media-bridge/src/hls.rs, this module's own top-level doc,
+# Carries `keepalive 1024;`, the same as every other upstream this donor
+# nginx.conf declares (`jsmpeg` above, plus `frigate_api`/`mqtt_ws`/
+# `corvette_fmp4_ws` elsewhere in this file) -- this file has no precedent
+# anywhere for a `keepalive`-less upstream proxied under `proxy.conf`'s own
+# unconditional `Connection: Upgrade` header (see `proxy.conf`'s own doc, or
+# this script's own history), and `corvette_hls` genuinely tried being the
+# first: G3's own HLS listener (crates/corvette-media-bridge/src/hls.rs,
 # "Named simplifications") reads exactly one request per TCP connection and
-# always closes afterward -- it never supports HTTP keep-alive at all. An
-# nginx `keepalive` pool tells nginx it may reuse a pooled connection for a
-# later request; against a backend that already closed that same connection
-# after its one request, the reused request lands on a dead socket and nginx
-# surfaces the failure to the client (503, intermittently, under exactly the
-# rapid-retry request pattern a real HLS player's polling produces) rather
-# than transparently opening a fresh one. Confirmed live: naively copying
-# jsmpeg's `keepalive 1024;` here caused exactly this -- U2's expanded view
-# hitting 503 on `/live/hls/<camera>/playlist.m3u8` under hls.js's own retry
-# behavior, traced to `hls-listener` logging "connection closed before a
-# complete request header block arrived" for reused, already-closed sockets.
-# Omitting `keepalive` here makes nginx open a fresh connection per request
-# against this specific upstream, matching G3's own contract exactly -- the
-# extra TCP handshake per request is the same cost G3's own doc already
-# names and accepts.
+# always closes afterward, so an earlier revision of this script omitted
+# `keepalive` here entirely, reasoning that a keepalive pool against a
+# backend that always closes its connection would eventually hand out a dead
+# socket. That reasoning was correct about the failure mode (503s were
+# confirmed live under hls.js's own retry pattern) but wrong about the fix:
+# removing `keepalive` here -- the one upstream in this entire file without
+# it -- traded the intermittent 503s for something worse, confirmed live and
+# repeatedly: authenticated requests through the real deployment's own
+# external ingress stalled 3-30 seconds (variable, not a fixed timeout)
+# before failing, while the same backend answered in under 1ms whenever it
+# was reached by a path that bypassed real session auth (direct, loopback,
+# or the in-cluster Service) -- ruling out G3 itself, and pointing at
+# something in nginx's own handling of a `keepalive`-less upstream under
+# this donor's blanket Upgrade-forcing specifically, still unproven at the
+# packet level but the one variable that reliably flips the symptom on and
+# off. `keepalive` is restored here to match every sibling upstream's own
+# shape; the actual "don't reuse a connection to a backend that always
+# closes it" fix now lives where it belongs -- the `/live/hls/` location's
+# own explicit `Connection: close`/empty `Upgrade` headers below, added
+# alongside this change, which tell nginx per request not to pool this
+# connection regardless of what the upstream group allows.
 NEW_UPSTREAM = """    upstream jsmpeg {
         server 127.0.0.1:8082;
         keepalive 1024;
@@ -97,6 +107,7 @@ NEW_UPSTREAM = """    upstream jsmpeg {
 
     upstream corvette_hls {
         server 127.0.0.1:8556;
+        keepalive 1024;
     }
 
     include go2rtc_upstream.conf;
@@ -128,26 +139,30 @@ OLD_LOCATION = """        location /live/jsmpeg/ {
 # proxy_set_header Upgrade $http_upgrade;` -- forced on every proxied
 # location in this donor nginx.conf, not just real Upgrade requests, and not
 # gated behind the `map $http_upgrade $connection_upgrade` pattern a correct
-# WebSocket-proxying config uses. Removing `keepalive` from `corvette_hls`
-# (this file's own history, see this module's git log) fixed the original
-# 503s but traded them for something worse: every authenticated request
-# through the real deployment's own external ingress stalled 20-30 seconds
-# before failing, confirmed directly against `frigate-0`'s own nginx access
-# log (`request_time`/`upstream_response_time` both ~20-30s, ending in 499)
-# -- while the exact same backend answered in under 1ms when hit directly,
-# ruling out G3 itself, CPU starvation, and local port exhaustion in turn.
-# The one clean comparison: `/live/mse/ws/` (below), whose upstream still
-# carries `keepalive`, answered a plain GET in 12ms through the identical
-# authenticated path. A `keepalive`-less upstream combined with this donor's
-# blanket "Upgrade" forcing is the one structural difference between a
-# location that hangs and one that doesn't -- since G3 never performs a real
-# protocol upgrade, forcing nginx to consider one is never correct here
-# regardless of the upstream's own `keepalive` setting. Explicitly clearing
-# both headers removes the ambiguity at its source: nginx is told, per
-# request, that this is a plain, non-upgradeable exchange, which is what
-# actually stops it from pooling a connection (fixing the original 503s)
-# without whatever `Connection: Upgrade` plus no `keepalive` was doing to
-# produce the 20-30 second stalls.
+# WebSocket-proxying config uses. G3 never performs a real protocol upgrade,
+# so forcing nginx to consider one is never correct here; these two lines
+# tell it, per request, that this is a plain non-upgradeable exchange.
+#
+# This alone was tried first, paired with removing `keepalive` from
+# `corvette_hls` entirely (this file's own earlier history). That combination
+# did fix the original 503s but traded them for something worse -- confirmed
+# directly, twice, against a live redeploy of exactly that combination, not
+# assumed: every authenticated request through the real deployment's own
+# external ingress stalled 3-30 seconds (variable, not a fixed protocol
+# timeout) before failing, while the same backend answered in under 1ms
+# whenever a request reached it by any path that bypassed real session auth
+# (direct, loopback, or the in-cluster Service) -- ruling out G3 itself, CPU
+# starvation, and local port exhaustion in turn, and ruling out slow auth in
+# general too (`/live/mse/ws/` and `/api/config`, both gated by the exact
+# same `auth_request.conf`, answered in well under 50ms through the same real
+# session in the same browser tab, moments apart). `corvette_hls` turned out
+# to be the only upstream in this entire nginx.conf without `keepalive`
+# (`upstream corvette_hls`'s own doc, above); every sibling upstream that
+# shares this same Upgrade-forcing `proxy.conf` keeps one. That upstream
+# declaration has now been restored to match its siblings; the actual
+# "don't reuse a connection to a backend that always closes it" fix lives
+# here instead, in these two explicit headers, which work regardless of
+# whether the upstream group itself is configured to pool connections.
 NEW_LOCATION = """        location /live/jsmpeg/ {
             include auth_request.conf;
             proxy_pass http://jsmpeg/;

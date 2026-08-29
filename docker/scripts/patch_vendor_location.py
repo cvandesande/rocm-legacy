@@ -54,7 +54,9 @@ DEFAULT_TARGET = Path("/usr/local/nginx/conf/nginx.conf")
 # Re-recorded again after patch_live_hls_location.py added explicit
 # `Connection: close`/empty `Upgrade` headers to its own /live/hls/ location
 # (fourth-incident fix, same doc).
-EXPECTED_MD5 = "4e3d133f5ceb44377e63a07efdecfded"
+# Re-recorded a third time after patch_live_hls_location.py restored
+# `keepalive 1024;` on `corvette_hls` (same doc's later revision).
+EXPECTED_MD5 = "be080b69ec2010683806ced9bf21fd26"
 
 OLD = """            location /pkg/ {
                 add_header Cache-Control "no-cache";
