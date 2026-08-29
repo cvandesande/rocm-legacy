@@ -62,12 +62,14 @@ DEFAULT_TARGET = Path("/usr/local/nginx/conf/nginx.conf")
 # /live/hls/ location have already been inserted -- this script runs third in
 # the Dockerfile, against that chained output, not against the pristine donor
 # file. Recorded by applying both prior scripts, in order, to a scratch copy
-# of the pristine donor and hashing the result.
-EXPECTED_MD5 = "d97fac77dc290384db98f3aaefe55c49"
+# of the pristine donor and hashing the result. Re-recorded after
+# patch_live_hls_location.py stopped giving corvette_hls its own `keepalive`
+# line (see that script's own doc for why: G3's HLS listener never supports
+# keep-alive, and nginx pooling connections to it anyway caused live 503s).
+EXPECTED_MD5 = "23a5d1389b328ea9def1e1cfb392d0f4"
 
 OLD_UPSTREAM = """    upstream corvette_hls {
         server 127.0.0.1:8556;
-        keepalive 1024;
     }
 
     include go2rtc_upstream.conf;
@@ -82,9 +84,14 @@ OLD_UPSTREAM = """    upstream corvette_hls {
 # not rendered from user config), an unreferenced nginx `upstream` block is
 # not an error, and removing it is not something this item's Do steps ask
 # for -- go2rtc's own removal from this image is F1's item, not this one's.
+#
+# `corvette_fmp4_ws` keeps its own `keepalive 1024;`, unlike `corvette_hls`
+# above it: G2's WebSocket listener holds one long-lived connection per
+# viewer for as long as the tile stays mounted (`ws_repackager.rs`), nothing
+# like G3's one-request-then-close HLS server, so nginx pooling idle
+# keep-alive connections to it carries none of `corvette_hls`'s failure mode.
 NEW_UPSTREAM = """    upstream corvette_hls {
         server 127.0.0.1:8556;
-        keepalive 1024;
     }
 
     upstream corvette_fmp4_ws {

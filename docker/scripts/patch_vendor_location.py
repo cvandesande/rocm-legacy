@@ -44,11 +44,13 @@ DEFAULT_TARGET = Path("/usr/local/nginx/conf/nginx.conf")
 
 # md5 of /usr/local/nginx/conf/nginx.conf inside the frigate-vulkan:py313
 # image immediately after patch_pkg_location.py, patch_live_hls_location.py
-# and patch_retire_go2rtc_routes.py have all run, read directly via
-# `docker run --rm --entrypoint sh <image> -c 'md5sum ...'` against a real
+# and patch_retire_go2rtc_routes.py have all run, read directly from a real
 # build carrying all three -- not computed by hand, not the donor's own
-# pristine md5 any of those three scripts checks against.
-EXPECTED_MD5 = "ba630aa98a304a9e2d9d52238adaf3a5"
+# pristine md5 any of those three scripts checks against. Re-recorded after
+# patch_live_hls_location.py stopped giving corvette_hls its own `keepalive`
+# line (see that script's own doc): its output, and everything chained after
+# it, changed by those removed bytes.
+EXPECTED_MD5 = "2496b0867a6ef30e4d4b8604a82b3ffa"
 
 OLD = """            location /pkg/ {
                 add_header Cache-Control "no-cache";

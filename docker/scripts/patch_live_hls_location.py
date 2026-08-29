@@ -70,6 +70,26 @@ OLD_UPSTREAM = """    upstream jsmpeg {
 # Frigate-templated include, because go2rtc's own API port is user
 # configurable) -- G3's HLS port has no such user-facing configuration point,
 # so it belongs with jsmpeg's style, not go2rtc's.
+#
+# Deliberately WITHOUT jsmpeg's own `keepalive 1024;` line, unlike every other
+# upstream in this block: G3's own HLS listener
+# (crates/corvette-media-bridge/src/hls.rs, this module's own top-level doc,
+# "Named simplifications") reads exactly one request per TCP connection and
+# always closes afterward -- it never supports HTTP keep-alive at all. An
+# nginx `keepalive` pool tells nginx it may reuse a pooled connection for a
+# later request; against a backend that already closed that same connection
+# after its one request, the reused request lands on a dead socket and nginx
+# surfaces the failure to the client (503, intermittently, under exactly the
+# rapid-retry request pattern a real HLS player's polling produces) rather
+# than transparently opening a fresh one. Confirmed live: naively copying
+# jsmpeg's `keepalive 1024;` here caused exactly this -- U2's expanded view
+# hitting 503 on `/live/hls/<camera>/playlist.m3u8` under hls.js's own retry
+# behavior, traced to `hls-listener` logging "connection closed before a
+# complete request header block arrived" for reused, already-closed sockets.
+# Omitting `keepalive` here makes nginx open a fresh connection per request
+# against this specific upstream, matching G3's own contract exactly -- the
+# extra TCP handshake per request is the same cost G3's own doc already
+# names and accepts.
 NEW_UPSTREAM = """    upstream jsmpeg {
         server 127.0.0.1:8082;
         keepalive 1024;
@@ -77,7 +97,6 @@ NEW_UPSTREAM = """    upstream jsmpeg {
 
     upstream corvette_hls {
         server 127.0.0.1:8556;
-        keepalive 1024;
     }
 
     include go2rtc_upstream.conf;
