@@ -29,7 +29,7 @@ ARG PYTHON_IMAGE=python:3.13-slim-trixie
 # (commit 0e1bfcf -- issue #20, monitor mode M1-M5) -- never a placeholder or
 # hand-typed value.
 ARG CORVETTE_VERSION=20260904
-ARG CORVETTE_UI_IMAGE=docker.io/cvandesande/corvette-ui:${CORVETTE_VERSION}@sha256:0313e7d02700c6e9f207fd12873558b7fef1ba1a8111888fe9a628f405913432
+ARG CORVETTE_UI_IMAGE=docker.io/cvandesande/corvette-ui:${CORVETTE_VERSION}@sha256:c386192e798efac3f8a1ea8192eb400485a65118eecde140fa541de06d7b75f6
 
 FROM ${PYTHON_IMAGE} AS ncnn-builder
 ARG NCNN_TAG
